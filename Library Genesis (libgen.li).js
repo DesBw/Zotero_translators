@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2026-11-06 06:47:49"
+	"lastUpdated": "2026-11-06 07:01:22"
 }
 
 /*
@@ -172,41 +172,44 @@ function detectWeb(doc, url) {
 	return false;
 }
 
-function getSearchResults(doc, checkOnly) {
-	let items = {};
-	let found = false;
-	let seen = new Set();
-	for (let row of doc.querySelectorAll('tr')) {
-		let link = pickTitleLink(row);
-		if (!link || seen.has(link.key)) continue;
-		if (checkOnly) return true;
-		seen.add(link.key);
-		found = true;
-		items[link.href] = link.title;
-	}
-	return found ? items : false;
-}
-
-// One result row links to the same record several times: the issue line, the
-// title, and the ISBN or DOI all point at the same edition.php URL. Prefer the
-// link whose text reads like a title, and prefer edition links over file and
+// One result links to the same record several times: the issue line, the title,
+// and the ISBN or DOI all point at the same edition.php URL. Prefer the link
+// whose text reads like a title, and prefer edition links over file and
 // download-page links. The page's bulk "JSON" link, which lists every ID the
 // query matched, is deliberately ignored.
-function pickTitleLink(row) {
-	let best = null;
-	for (let link of row.querySelectorAll('a[href]')) {
+//
+// Grouping by record rather than by table row keeps this independent of the
+// site's markup: the links that belong together are exactly the links that
+// share a record, whichever element they sit in.
+function getSearchResults(doc, checkOnly) {
+	let bestByKey = new Map();
+	for (let link of doc.querySelectorAll('a[href]')) {
 		let record = recordFromURL(link.href);
 		if (!record) continue;
 		let title = ZU.trimInternal(link.textContent);
 		if (!title) continue;
 		let rank = record.rank + (looksLikeTitle(title) ? 0 : 100);
 		// Among equally good candidates prefer the longer text: a real title
-		// outranks the short issue line that precedes it in the row.
-		if (!best || rank < best.rank || (rank === best.rank && title.length > best.title.length)) {
-			best = { href: link.href, key: record.key, title, rank };
+		// outranks the short issue line that precedes it.
+		let best = bestByKey.get(record.key);
+		if (!best || rank < best.rank
+			|| (rank === best.rank && title.length > best.title.length)) {
+			bestByKey.set(record.key, { key: record.key, href: link.href, title, rank });
 		}
 	}
-	return best;
+	if (!bestByKey.size) return false;
+	if (checkOnly) return true;
+
+	// Prefer edition records: they carry the bibliographic metadata, and the
+	// file and download links on the same page resolve to them anyway.
+	let candidates = [...bestByKey.values()].filter(candidate => candidate.key[0] === 'e');
+	if (!candidates.length) candidates = [...bestByKey.values()];
+
+	let items = {};
+	for (let candidate of candidates) {
+		items[candidate.href] = candidate.title;
+	}
+	return items;
 }
 
 function recordFromURL(url) {
