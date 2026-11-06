@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2026-11-06 06:41:47"
+	"lastUpdated": "2026-11-06 06:47:49"
 }
 
 /*
@@ -376,7 +376,16 @@ function recordToMetadata(record) {
 	meta.volume = ZU.trimInternal(record.issue_volume || '');
 	meta.issue = ZU.trimInternal(record.issue_number || '');
 	meta.pages = pageRange(record.issue_first_page, record.issue_last_page);
-	meta.numPages = ZU.trimInternal(record.pages || '');
+	// The same column holds a page count for whole works ("775") and a page
+	// range for parts of one ("18-45"), so route it by shape rather than
+	// assuming it is always a count.
+	let pageCount = normalizePageRange(record.pages);
+	if (pageCount.includes('-')) {
+		if (!meta.pages) meta.pages = pageCount;
+	}
+	else {
+		meta.numPages = pageCount;
+	}
 	meta.DOI = ZU.cleanDOI(record.doi || '') || '';
 
 	let isbns = [];
