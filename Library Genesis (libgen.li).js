@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2026-11-06 06:24:18"
+	"lastUpdated": "2026-11-06 06:35:26"
 }
 
 /*
@@ -506,8 +506,12 @@ function splitCreators(value) {
 	if (parts.length === 2) {
 		return parts[0].includes(' ') && parts[1].includes(' ') ? parts : [value];
 	}
-	if (parts.length % 2 === 0 && parts.every(part => !part.includes(' '))) {
-		// "Orwell, George, Fromm, Erich" is a list of "Last, First" pairs.
+	// "Orwell, George, Fromm, Erich" and "Smith, John A., Doe, Jane B." are
+	// lists of "Last, First" pairs. The surnames are the single-token parts at
+	// even positions; the given names may carry middle initials. A "First Last"
+	// list fails this test because its even positions contain a space.
+	if (parts.length % 2 === 0
+		&& parts.every((part, index) => index % 2 || !part.includes(' '))) {
 		let pairs = [];
 		for (let i = 0; i < parts.length; i += 2) {
 			pairs.push(parts[i] + ', ' + parts[i + 1]);
