@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2026-11-06 06:35:26"
+	"lastUpdated": "2026-11-06 06:41:47"
 }
 
 /*
@@ -671,14 +671,23 @@ function buildItem(meta, url, editionID, md5) {
 	else {
 		setField(item, 'pages', meta.pages);
 		setField(item, 'numPages', meta.numPages);
+		// Articles, reports and entries count their pages in "pages"; only
+		// whole works have "numPages". Don't drop the count for those.
+		if (!item.pages && !ZU.fieldIsValidForType('numPages', item.itemType)) {
+			setField(item, 'pages', meta.numPages);
+		}
 	}
 	setField(item, 'volume', meta.volume);
 	setField(item, 'issue', meta.issue);
 	setField(item, 'ISBN', meta.ISBN);
 	setField(item, 'ISSN', meta.ISSN);
-	// Preprints name a repository rather than a publisher; keep the value
-	// whichever field the item type actually supports.
+	// LibGen stores one publisher string for every record, but Zotero names
+	// that role differently by item type: a thesis is awarded by a university,
+	// a report comes from an institution, a preprint lives in a repository.
+	// Without this a dissertation would lose its awarding body entirely.
 	if (!ZU.fieldIsValidForType('publisher', item.itemType)) {
+		setField(item, 'university', meta.publisher);
+		setField(item, 'institution', meta.publisher);
 		setField(item, 'repository', meta.publisher);
 	}
 
